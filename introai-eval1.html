@@ -17,13 +17,13 @@
    no localStorage, consistent with this quiz's memory-only state architecture. */
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --accent:#8b7cf6; --accent-dark:#a99bff; --accent2:#f5c063; --ink:#ece9fb; --muted:#a9a3d6;
-    --bg:#14122b; --card:#1e1c3f; --line:#322f5c; --soft:#242047; --good:#34d399; --bad:#f87171;
+    --accent:#9d8fff; --accent-dark:#c3b8ff; --accent2:#f5c063; --ink:#f3f1fd; --muted:#bcb6e8;
+    --bg:#14122b; --card:#1e1c3f; --line:#4a4580; --soft:#332e63; --good:#34d399; --bad:#f87171;
   }
 }
 :root[data-theme="dark"]{
-  --accent:#8b7cf6; --accent-dark:#a99bff; --accent2:#f5c063; --ink:#ece9fb; --muted:#a9a3d6;
-  --bg:#14122b; --card:#1e1c3f; --line:#322f5c; --soft:#242047; --good:#34d399; --bad:#f87171;
+  --accent:#9d8fff; --accent-dark:#c3b8ff; --accent2:#f5c063; --ink:#f3f1fd; --muted:#bcb6e8;
+  --bg:#14122b; --card:#1e1c3f; --line:#4a4580; --soft:#332e63; --good:#34d399; --bad:#f87171;
 }
 *{box-sizing:border-box}
 body{margin:0;font-family:'DM Sans',Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
@@ -85,14 +85,35 @@ label{font-size:.85rem;font-weight:700;color:var(--muted);display:block;margin-b
 .qtext{font-size:1.08rem;font-weight:700;margin:8px 0 16px}
 .opt{display:block;width:100%;text-align:left;background:var(--soft);border:1.5px solid var(--line);border-radius:10px;padding:12px 15px;margin:8px 0;cursor:pointer;font-size:.96rem;color:var(--ink);transition:border-color .12s,background .12s}
 .opt:hover{border-color:var(--accent)}
-.opt.selected{background:var(--soft);border-color:var(--accent);color:var(--ink);font-weight:700}
+.opt.selected{background:color-mix(in srgb, var(--accent) 20%, var(--soft));border-color:var(--accent);border-width:2px;color:var(--ink);font-weight:700}
 .confidence-row{display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap}
 .confidence-row .clabel{font-size:.8rem;color:var(--muted);margin-right:4px}
-.cpill{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 13px;font-size:.82rem;font-weight:700;cursor:pointer;color:var(--muted);transition:transform .12s}
+.confidence-row .clabel .req{color:var(--bad);font-weight:800}
+.cpill{border:1.5px solid var(--line);background:var(--soft);border-radius:999px;padding:6px 13px;font-size:.82rem;font-weight:700;cursor:pointer;color:var(--muted);transition:transform .12s,background .12s,border-color .12s}
 .cpill.active{background:var(--accent);border-color:var(--accent);color:#fff}
 .cpill:active{transform:scale(.92)}
+.confidence-row.missing .cpill{border-color:var(--bad)}
 .qnav-row{display:flex;justify-content:space-between;margin-top:22px;gap:10px;flex-wrap:wrap}
 .submit-link{display:block;text-align:center;font-size:.85rem;color:var(--muted);margin-top:16px;cursor:pointer;text-decoration:underline}
+
+/* fullscreen assessment view — larger, roomier reading size so the question
+   doesn't feel "far away"; scoped so the pre-quiz screens are unaffected */
+:fullscreen .wrap,:-webkit-full-screen .wrap{max-width:1040px}
+:fullscreen .qtag,:-webkit-full-screen .qtag{font-size:.8rem}
+:fullscreen .qtext,:-webkit-full-screen .qtext{font-size:1.38rem;line-height:1.42;margin:12px 0 22px}
+:fullscreen .opt,:-webkit-full-screen .opt{font-size:1.14rem;padding:15px 18px;margin:10px 0}
+:fullscreen .confidence-row .clabel,:-webkit-full-screen .confidence-row .clabel{font-size:.9rem}
+:fullscreen .cpill,:-webkit-full-screen .cpill{font-size:.92rem;padding:8px 16px}
+@media (max-width:640px){
+  :fullscreen .qtext,:-webkit-full-screen .qtext{font-size:1.22rem}
+  :fullscreen .opt,:-webkit-full-screen .opt{font-size:1.04rem}
+}
+
+/* fullscreen-exit alert — bigger, higher-contrast than the soft-warning modal */
+.modal.alert-modal{border:2px solid var(--bad);max-width:460px}
+.alert-modal .alert-icon{font-size:2.4rem;line-height:1;margin-bottom:6px}
+.alert-modal h3{color:var(--bad);margin:0 0 8px}
+.alert-modal p{font-size:1rem;margin:6px 0}
 
 /* modal */
 .modal-backdrop{position:fixed;inset:0;background:rgba(30,27,58,.45);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -217,8 +238,8 @@ footer{margin-top:35px;color:var(--muted);font-size:.85rem;border-top:1px solid 
     <div class="qtag" id="qTag">—</div>
     <p class="qtext" id="qText">Loading…</p>
     <div id="optsWrap"></div>
-    <div class="confidence-row">
-      <span class="clabel">How sure are you?</span>
+    <div class="confidence-row" id="confidenceRow">
+      <span class="clabel">How sure are you? <span class="req" id="confReqMark" hidden>*</span></span>
       <button class="cpill" data-v="1" type="button">Not sure</button>
       <button class="cpill" data-v="2" type="button">Somewhat</button>
       <button class="cpill" data-v="3" type="button">Very sure</button>
@@ -299,6 +320,19 @@ footer{margin-top:35px;color:var(--muted);font-size:.85rem;border-top:1px solid 
   </div>
 </div>
 
+<!-- Fullscreen-exit alert modal -->
+<div class="modal-backdrop" id="fsExitModal" hidden>
+  <div class="modal alert-modal">
+    <div class="alert-icon">⚠️</div>
+    <h3>You left full-screen mode</h3>
+    <p>This has been recorded as a proctoring event for this attempt. Please stay in full-screen for the rest of the assessment.</p>
+    <p style="font-size:.82rem;color:var(--muted)" id="fsExitCountMsg"></p>
+    <div class="modal-actions">
+      <button class="btn" id="fsExitResumeBtn" type="button">OK, resume full-screen</button>
+    </div>
+  </div>
+</div>
+
 <!-- My Record modal -->
 <div class="modal-backdrop" id="recordModal" hidden>
   <div class="modal">
@@ -322,6 +356,9 @@ const QUIZ_MODE   = 'ASSESSMENT';
 const DURATION_MINUTES = 35;
 const LEADERBOARD_TOP_N = 2;
 const REDUCE_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+// If true, a confidence rating is required on every question before the
+// student can move on or submit — set false to make it optional again.
+const CONFIDENCE_REQUIRED = true;
 
 /* ===== MODULE: STATE ===== */
 const STATE = {
@@ -329,7 +366,11 @@ const STATE = {
   sessionId:null, token:null, questions:[], currentIndex:0,
   answers:{}, confidence:{}, questionTimes:{}, answerChanges:{},
   questionEnterMs:null, quizStartMs:null, remainingMs:null, timerHandle:null,
-  submitted:false, resultData:null
+  submitted:false, resultData:null,
+  // Whether the browser ever actually granted fullscreen this sitting — some
+  // mobile browsers silently ignore requestFullscreen(), so exit-tracking
+  // and the exit-warning modal only engage once this has been true at least once.
+  fullscreenEntered:false
 };
 
 function genSessionId(){
@@ -425,9 +466,11 @@ document.getElementById('btnNotMe').addEventListener('click', ()=>{
   document.getElementById('rollInput').value = '';
 });
 
+document.getElementById('confReqMark').hidden = !CONFIDENCE_REQUIRED;
+
 document.getElementById('btnBegin').addEventListener('click', async ()=>{
   // Fullscreen request must happen inside this click handler (user gesture)
-  try{ await document.documentElement.requestFullscreen(); } catch(e){ /* fail open */ }
+  try{ await document.documentElement.requestFullscreen(); } catch(e){ /* fail open — fullscreen unsupported/blocked (common on some mobile browsers); STATE.fullscreenEntered stays false so no phantom exit warnings fire */ }
   await beginQuiz();
 });
 
@@ -468,6 +511,8 @@ document.addEventListener('keydown', e => {
 });
 
 let violationCount = 0;
+let tabSwitchCount = 0;
+let fsExitCount = 0;
 const integrityViolations = [];
 let integrityFlag = false;
 const WARNINGS_BEFORE_SUBMIT = 2;
@@ -486,17 +531,40 @@ function logIntegrityEvent(type){
 function recordViolation(type){
   if (integrityFlag || STATE.submitted || document.getElementById('screen-quiz').hidden) return;
   violationCount++;
+  if (type === 'TAB_SWITCH') tabSwitchCount++;
+  else if (type === 'FULLSCREEN_EXIT') fsExitCount++;
   integrityViolations.push({ type, questionId: currentQuestionId(), elapsedMs: Date.now() - (STATE.quizStartMs||Date.now()) });
   logIntegrityEvent(type);
   if (violationCount <= WARNINGS_BEFORE_SUBMIT){
-    showToast(`Warning ${violationCount}/${WARNINGS_BEFORE_SUBMIT}: leaving the quiz view is recorded. One more and your attempt auto-submits.`);
+    if (type === 'FULLSCREEN_EXIT'){
+      // Bigger, blocking alert instead of a toast — easy to miss a toast while
+      // already worried about having lost full-screen. Still counts toward
+      // the same shared warning/auto-submit threshold as TAB_SWITCH.
+      document.getElementById('fsExitCountMsg').textContent =
+        `Warning ${violationCount}/${WARNINGS_BEFORE_SUBMIT} — one more exit and your attempt auto-submits.`;
+      document.getElementById('fsExitModal').hidden = false;
+    } else {
+      showToast(`Warning ${violationCount}/${WARNINGS_BEFORE_SUBMIT}: leaving the quiz view is recorded. One more and your attempt auto-submits.`);
+    }
   } else {
     integrityFlag = true;
+    document.getElementById('fsExitModal').hidden = true;
     doSubmit({ auto:true, reason:'integrity' });
   }
 }
 document.addEventListener('visibilitychange', () => { if (document.hidden) recordViolation('TAB_SWITCH'); });
-document.addEventListener('fullscreenchange', () => { if (!document.fullscreenElement) recordViolation('FULLSCREEN_EXIT'); });
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement){ STATE.fullscreenEntered = true; return; }
+  // Only treat this as an exit-to-record if the browser actually granted
+  // full-screen earlier this sitting — some mobile browsers silently never
+  // enter full-screen at all, and that shouldn't generate phantom violations.
+  if (!STATE.fullscreenEntered) return;
+  recordViolation('FULLSCREEN_EXIT');
+});
+document.getElementById('fsExitResumeBtn').addEventListener('click', async ()=>{
+  document.getElementById('fsExitModal').hidden = true;
+  try{ await document.documentElement.requestFullscreen(); } catch(e){ /* fail open */ }
+});
 
 function buildWatermark(){
   const wm = document.getElementById('watermark');
@@ -603,6 +671,7 @@ function renderQuestion(){
   document.querySelectorAll('.cpill').forEach(p=>{
     p.classList.toggle('active', STATE.confidence[q.id] === parseInt(p.dataset.v,10));
   });
+  document.getElementById('confidenceRow').classList.remove('missing');
   document.getElementById('progressFill').style.width = ((STATE.currentIndex+1)/STATE.questions.length*100)+'%';
   document.getElementById('progressLabel').textContent = `Question ${STATE.currentIndex+1} of ${STATE.questions.length}`;
   document.getElementById('btnPrev').disabled = STATE.currentIndex === 0;
@@ -630,14 +699,35 @@ document.querySelectorAll('.cpill').forEach(p=>{
     const q = STATE.questions[STATE.currentIndex];
     STATE.confidence[q.id] = parseInt(p.dataset.v,10);
     document.querySelectorAll('.cpill').forEach(x=>x.classList.toggle('active', x===p));
+    document.getElementById('confidenceRow').classList.remove('missing');
   });
 });
-function jumpToQuestion(i){
+function confidenceSatisfied(qid){
+  return STATE.confidence[qid] !== undefined;
+}
+function jumpToQuestion(i, opts){
+  opts = opts || {};
   if (i < 0 || i >= STATE.questions.length) return;
+  if (!opts.force && CONFIDENCE_REQUIRED && i !== STATE.currentIndex){
+    const cur = STATE.questions[STATE.currentIndex];
+    if (cur && !confidenceSatisfied(cur.id)){
+      document.getElementById('confidenceRow').classList.add('missing');
+      showToast('Please rate your confidence on this question before moving on.');
+      return;
+    }
+  }
   animateCardSwap(()=>{ STATE.currentIndex = i; renderQuestion(); });
 }
 document.getElementById('btnPrev').addEventListener('click', ()=> jumpToQuestion(STATE.currentIndex-1));
 document.getElementById('btnNext').addEventListener('click', ()=>{
+  if (CONFIDENCE_REQUIRED){
+    const cur = STATE.questions[STATE.currentIndex];
+    if (cur && !confidenceSatisfied(cur.id)){
+      document.getElementById('confidenceRow').classList.add('missing');
+      showToast('Please rate your confidence on this question first.');
+      return;
+    }
+  }
   if (STATE.currentIndex === STATE.questions.length-1){ onSubmitPressed(); }
   else jumpToQuestion(STATE.currentIndex+1);
 });
@@ -663,6 +753,15 @@ function updateTimerDisplay(){
 }
 
 function onSubmitPressed(){
+  if (CONFIDENCE_REQUIRED){
+    const missingIdx = STATE.questions.findIndex(q => !confidenceSatisfied(q.id));
+    if (missingIdx !== -1){
+      showToast(`Please rate your confidence on Question ${missingIdx+1} — it's required before you can submit.`);
+      jumpToQuestion(missingIdx, {force:true});
+      document.getElementById('confidenceRow').classList.add('missing');
+      return;
+    }
+  }
   const unanswered = STATE.questions.filter(q => STATE.answers[q.id] === undefined || STATE.answers[q.id] === -1).length;
   if (unanswered > 0){
     document.getElementById('softWarnMsg').textContent =
@@ -699,7 +798,7 @@ async function doSubmit(opts){
     roll: STATE.roll, name: STATE.name, section: STATE.section, branch: STATE.branch,
     semester: STATE.semester, cohortId: STATE.cohortId, mode: QUIZ_MODE,
     answers, confidence, questionTimes, answerChanges,
-    tabSwitchCount: violationCount, fullscreenExitCount: 0,
+    tabSwitchCount, fullscreenExitCount: fsExitCount,
     autoSubmitReason: opts.auto ? opts.reason : undefined,
     timeTaken: Date.now() - STATE.quizStartMs, submittedAt: new Date().toISOString()
   };
