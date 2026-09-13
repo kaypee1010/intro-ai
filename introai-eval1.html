@@ -324,7 +324,6 @@ footer{margin-top:35px;color:var(--muted);font-size:.85rem;border-top:1px solid 
   </div>
   <div class="card" id="scorecardOffNote" hidden>
     <span class="badge">Scorecard not enabled yet</span>
-    <p style="margin-top:8px;font-size:.9rem">Your faculty hasn't turned on rank/percentile for this quiz yet — usually switched on once a course has a few quizzes' history. Your score and topic feedback above are already final and yours to keep.</p>
   </div>
 
   <div class="card" id="leaderboardBlock" hidden>
@@ -338,7 +337,7 @@ footer{margin-top:35px;color:var(--muted);font-size:.85rem;border-top:1px solid 
     <div id="reviewBlock"></div>
   </div>
 
-  <footer>Introduction to AI · INTROAI-EVAL1 · Server-graded assessment. Your answer key never leaves K.P. Singh's backend.</footer>
+  <footer>Introduction to AI · INTROAI-EVAL1 · SGT University</footer>
 </section>
 
 </main>
@@ -516,7 +515,10 @@ async function beginQuiz(){
       quiz: QUIZ_ID, roll: STATE.roll, sessionId: STATE.sessionId, duration: DURATION_MINUTES
     });
     if(!res.success){
-      showToast('Could not start the assessment — it may have just closed. Reload and try again.');
+      // Surface the server's actual reason when it has one (e.g. an
+      // already-completed attempt) instead of a generic message that would
+      // be misleading for anything other than "the quiz just closed."
+      showToast(res.message || 'Could not start the assessment — it may have just closed. Reload and try again.');
       return;
     }
     STATE.token = res.data.token;
@@ -899,7 +901,7 @@ function renderResult(d){
   document.getElementById('gradePill').textContent = `Grade ${d.grade}${d.passed ? ' · Pass' : ' · Not cleared'}`;
   document.getElementById('statScore').textContent = `${d.score} / ${d.scoreMax}`;
   document.getElementById('statUnanswered').textContent = d.unanswered;
-  document.getElementById('statPass').textContent = d.passed ? 'Pass' : 'Review needed';
+  document.getElementById('statPass').textContent = d.passed ? 'Pass' : 'Not cleared';
 
   const tagWrap = document.getElementById('tagBars');
   tagWrap.innerHTML = '';
