@@ -61,6 +61,8 @@ label{font-size:.85rem;font-weight:700;color:var(--muted);display:block;margin-b
 .field{margin:14px 0}
 .callout{background:var(--soft);border-left:5px solid var(--accent);padding:14px 16px;border-radius:9px;margin:14px 0;font-size:.92rem}
 .callout.warn{border-left-color:var(--bad);background:#fdecec}
+.remember-list{margin:4px 0 0;padding-left:20px}
+.remember-list li{margin:7px 0;line-height:1.45}
 .err{color:var(--bad);font-weight:700;font-size:.88rem;margin-top:8px}
 
 /* progress + timer */
@@ -73,9 +75,9 @@ label{font-size:.85rem;font-weight:700;color:var(--muted);display:block;margin-b
 
 /* nav chips */
 .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
-.chip{width:32px;height:32px;border-radius:8px;border:1px solid var(--line);background:var(--card);font-size:.78rem;font-weight:700;cursor:pointer;color:var(--muted)}
-.chip.answered{background:var(--soft);border-color:var(--accent);color:var(--accent-dark)}
-.chip.current{background:var(--accent);border-color:var(--accent);color:#fff}
+.chip{width:32px;height:32px;border-radius:8px;border:1.5px dashed var(--line);background:var(--card);font-size:.78rem;font-weight:700;cursor:pointer;color:var(--muted)}
+.chip.answered{border-style:solid;background:color-mix(in srgb, var(--good) 16%, var(--card));border-color:var(--good);color:var(--good)}
+.chip.current{background:var(--accent);border-style:solid;border-color:var(--accent);color:#fff}
 
 /* question card */
 .qcard{position:relative}
@@ -89,8 +91,13 @@ label{font-size:.85rem;font-weight:700;color:var(--muted);display:block;margin-b
 .confidence-row{display:flex;gap:8px;margin-top:16px;align-items:center;flex-wrap:wrap}
 .confidence-row .clabel{font-size:.8rem;color:var(--muted);margin-right:4px}
 .confidence-row .clabel .req{color:var(--bad);font-weight:800}
-.cpill{border:1.5px solid var(--line);background:var(--soft);border-radius:999px;padding:6px 13px;font-size:.82rem;font-weight:700;cursor:pointer;color:var(--muted);transition:transform .12s,background .12s,border-color .12s}
+.cpill{border:1.5px solid var(--line);background:var(--soft);border-radius:999px;padding:6px 13px;font-size:.82rem;font-weight:700;cursor:pointer;color:var(--muted);transition:transform .12s,background .12s,border-color .12s,color .12s}
 .cpill.active{background:var(--accent);border-color:var(--accent);color:#fff}
+/* Not sure / Somewhat / Very sure get their own traffic-light colors on
+   selection, so confidence level reads at a glance without hovering. */
+.cpill[data-v="1"].active{background:var(--bad);border-color:var(--bad);color:#fff}
+.cpill[data-v="2"].active{background:var(--accent2);border-color:var(--accent2);color:#3a2c0a}
+.cpill[data-v="3"].active{background:var(--good);border-color:var(--good);color:#fff}
 .cpill:active{transform:scale(.92)}
 .confidence-row.missing .cpill{border-color:var(--bad)}
 .qnav-row{display:flex;justify-content:space-between;margin-top:22px;gap:10px;flex-wrap:wrap}
@@ -195,9 +202,17 @@ footer{margin-top:35px;color:var(--muted);font-size:.85rem;border-top:1px solid 
   </div>
 
   <div class="card" id="startFormCard">
-    <p><strong>30 questions</strong> · <strong>35 minutes</strong> · covers Unit 1 (AI Fundamentals, AI Technique &amp; Production Systems, Uninformed Search — BFS/DFS).</p>
+    <h3 style="margin-top:0">Instructions</h3>
+    <p><strong>30 questions</strong> · <strong>35 minutes</strong> · Topics: AI Fundamentals &amp; History, the Turing Test, AI Techniques &amp; Production Systems, and Search Fundamentals (BFS/DFS).</p>
     <div class="callout">
-      Once you begin: the page requests full-screen and disables right-click/devtools shortcuts as an academic-integrity deterrent (not a lockdown — be honest, it's an audit trail, not magic). Leaving the quiz view (switching tabs or exiting full-screen) is logged; doing it a third time auto-submits your attempt. You can submit any time, even with unanswered questions — nothing is ever blocked.
+      <strong style="display:block;margin-bottom:6px">Things to remember</strong>
+      <ul class="remember-list">
+        <li>Once you begin, the page requests full-screen mode.</li>
+        <li>Right-click and common devtools shortcuts are disabled — an academic-integrity deterrent, not a lockdown.</li>
+        <li>Switching tabs or exiting full-screen is logged; doing it a third time auto-submits your attempt.</li>
+        <li>Rate your confidence on every question you answer — it's required before you can move on or submit.</li>
+        <li>You can submit any time, even with unanswered questions — submission itself is never blocked.</li>
+      </ul>
     </div>
     <div class="field">
       <label for="rollInput">Roll Number</label>
@@ -702,7 +717,14 @@ document.querySelectorAll('.cpill').forEach(p=>{
     document.getElementById('confidenceRow').classList.remove('missing');
   });
 });
+function questionIsAnswered(qid){
+  return STATE.answers[qid] !== undefined && STATE.answers[qid] !== -1;
+}
+// Confidence is only ever required for a question the student actually
+// answered — an unanswered question is treated as satisfied so it never
+// blocks navigation or submission on its own.
 function confidenceSatisfied(qid){
+  if (!questionIsAnswered(qid)) return true;
   return STATE.confidence[qid] !== undefined;
 }
 function jumpToQuestion(i, opts){
