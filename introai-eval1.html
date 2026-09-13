@@ -75,9 +75,14 @@ label{font-size:.85rem;font-weight:700;color:var(--muted);display:block;margin-b
 
 /* nav chips */
 .chip-row{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
-.chip{width:32px;height:32px;border-radius:8px;border:1.5px dashed var(--line);background:var(--card);font-size:.78rem;font-weight:700;cursor:pointer;color:var(--muted)}
+.chip{position:relative;width:32px;height:32px;border-radius:8px;border:1.5px dashed var(--line);background:var(--card);font-size:.78rem;font-weight:700;cursor:pointer;color:var(--muted)}
 .chip.answered{border-style:solid;background:color-mix(in srgb, var(--good) 16%, var(--card));border-color:var(--good);color:var(--good)}
 .chip.current{background:var(--accent);border-style:solid;border-color:var(--accent);color:#fff}
+.chip.marked{outline:2px solid var(--accent2);outline-offset:1px}
+
+.qcard-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mark-btn{background:none;border:1px solid var(--line);color:var(--muted);font-size:.72rem;font-weight:700;padding:4px 10px;border-radius:999px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.mark-btn.active{background:var(--accent2);border-color:var(--accent2);color:#3a2c0a}
 
 /* question card */
 .qcard{position:relative}
@@ -141,6 +146,11 @@ label{font-size:.85rem;font-weight:700;color:var(--muted);display:block;margin-b
 
 /* result screen */
 .score-hero{text-align:center;padding:26px 20px}
+.result-id-row{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:4px}
+.avatar-circle{width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:1.05rem;font-family:'DM Serif Display',serif;flex-shrink:0}
+.result-id-text{text-align:left}
+.result-name{font-weight:700;font-size:.95rem;color:var(--ink)}
+.result-roll{font-size:.78rem;color:var(--muted)}
 .score-num{font-family:'DM Serif Display',serif;font-size:3.2rem;color:var(--accent-dark)}
 .grade-pill{display:inline-block;margin-top:6px;background:var(--soft);color:var(--accent-dark);border-radius:999px;padding:5px 16px;font-weight:700}
 .bar-row{display:flex;align-items:center;gap:10px;margin:9px 0}
@@ -250,7 +260,10 @@ footer{margin-top:35px;color:var(--muted);font-size:.85rem;border-top:1px solid 
   <div class="chip-row" id="chipRow"></div>
 
   <div class="card qcard" id="qCard">
-    <div class="qtag" id="qTag">—</div>
+    <div class="qcard-head">
+      <div class="qtag" id="qTag">—</div>
+      <button class="mark-btn" id="markBtn" type="button" title="Flag this question to come back to before you submit">🚩 Mark for review</button>
+    </div>
     <p class="qtext" id="qText">Loading…</p>
     <div id="optsWrap"></div>
     <div class="confidence-row" id="confidenceRow">
@@ -274,6 +287,13 @@ footer{margin-top:35px;color:var(--muted);font-size:.85rem;border-top:1px solid 
 <section id="screen-result" hidden>
   <div class="card" id="resultCapture">
     <div class="score-hero">
+      <div class="result-id-row">
+        <div class="avatar-circle" id="avatarCircle">—</div>
+        <div class="result-id-text">
+          <div class="result-name" id="resultName">—</div>
+          <div class="result-roll" id="resultRoll">—</div>
+        </div>
+      </div>
       <div class="badge good" id="autoSubmitNote" hidden></div>
       <div style="font-size:.85rem;color:var(--muted);margin-top:6px">Score</div>
       <div class="score-num"><span id="scoreCountUp">0</span>%</div>
@@ -379,7 +399,7 @@ const CONFIDENCE_REQUIRED = true;
 const STATE = {
   roll:null, name:null, section:null, branch:null, semester:null, cohortId:COHORT_ID,
   sessionId:null, token:null, questions:[], currentIndex:0,
-  answers:{}, confidence:{}, questionTimes:{}, answerChanges:{},
+  answers:{}, confidence:{}, questionTimes:{}, answerChanges:{}, marked:{},
   questionEnterMs:null, quizStartMs:null, remainingMs:null, timerHandle:null,
   submitted:false, resultData:null,
   // Whether the browser ever actually granted fullscreen this sitting — some
@@ -656,8 +676,10 @@ function buildChipRow(){
 function refreshChips(){
   const chips = document.querySelectorAll('#chipRow .chip');
   chips.forEach((c,i)=>{
-    c.classList.toggle('answered', STATE.answers[STATE.questions[i].id] !== undefined && STATE.answers[STATE.questions[i].id] !== -1);
+    const qid = STATE.questions[i].id;
+    c.classList.toggle('answered', STATE.answers[qid] !== undefined && STATE.answers[qid] !== -1);
     c.classList.toggle('current', i === STATE.currentIndex);
+    c.classList.toggle('marked', !!STATE.marked[qid]);
   });
 }
 function recordTimeOnCurrent(){
@@ -687,6 +709,7 @@ function renderQuestion(){
     p.classList.toggle('active', STATE.confidence[q.id] === parseInt(p.dataset.v,10));
   });
   document.getElementById('confidenceRow').classList.remove('missing');
+  document.getElementById('markBtn').classList.toggle('active', !!STATE.marked[q.id]);
   document.getElementById('progressFill').style.width = ((STATE.currentIndex+1)/STATE.questions.length*100)+'%';
   document.getElementById('progressLabel').textContent = `Question ${STATE.currentIndex+1} of ${STATE.questions.length}`;
   document.getElementById('btnPrev').disabled = STATE.currentIndex === 0;
@@ -740,6 +763,12 @@ function jumpToQuestion(i, opts){
   }
   animateCardSwap(()=>{ STATE.currentIndex = i; renderQuestion(); });
 }
+document.getElementById('markBtn').addEventListener('click', ()=>{
+  const q = STATE.questions[STATE.currentIndex];
+  STATE.marked[q.id] = !STATE.marked[q.id];
+  document.getElementById('markBtn').classList.toggle('active', !!STATE.marked[q.id]);
+  refreshChips();
+});
 document.getElementById('btnPrev').addEventListener('click', ()=> jumpToQuestion(STATE.currentIndex-1));
 document.getElementById('btnNext').addEventListener('click', ()=>{
   if (CONFIDENCE_REQUIRED){
@@ -857,7 +886,15 @@ function showAutoSubmitNote(opts){
   el.hidden = false;
 }
 
+function initials_(name){
+  const parts = String(name||'').trim().split(/\s+/).filter(Boolean);
+  if (!parts.length) return '?';
+  return (parts[0][0] + (parts.length>1 ? parts[parts.length-1][0] : '')).toUpperCase();
+}
 function renderResult(d){
+  document.getElementById('avatarCircle').textContent = initials_(STATE.name);
+  document.getElementById('resultName').textContent = STATE.name || '—';
+  document.getElementById('resultRoll').textContent = STATE.roll ? ('Roll ' + STATE.roll) : '—';
   countUp(document.getElementById('scoreCountUp'), Math.round(d.percentage));
   document.getElementById('gradePill').textContent = `Grade ${d.grade}${d.passed ? ' · Pass' : ' · Not cleared'}`;
   document.getElementById('statScore').textContent = `${d.score} / ${d.scoreMax}`;
