@@ -90,6 +90,11 @@ label{font-size:.85rem;font-weight:700;color:var(--muted);display:block;margin-b
 .qcard.anim-in{opacity:0;transform:translateX(10px)}
 .qtag{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700}
 .qtext{font-size:1.08rem;font-weight:700;margin:8px 0 16px}
+.qmedia{display:none;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px;margin:0 0 16px}
+.qmedia.show{display:block}
+.qmedia svg{width:100%;height:auto;display:block;max-height:340px}
+.qmedia img{width:100%;height:auto;display:block;border-radius:8px;max-height:340px;object-fit:contain}
+:fullscreen .qmedia svg,:-webkit-full-screen .qmedia svg,:fullscreen .qmedia img,:-webkit-full-screen .qmedia img{max-height:420px}
 .opt{display:block;width:100%;text-align:left;background:var(--soft);border:1.5px solid var(--line);border-radius:10px;padding:12px 15px;margin:8px 0;cursor:pointer;font-size:.96rem;color:var(--ink);transition:border-color .12s,background .12s}
 .opt:hover{border-color:var(--accent)}
 .opt.selected{background:color-mix(in srgb, var(--accent) 20%, var(--soft));border-color:var(--accent);border-width:2px;color:var(--ink);font-weight:700}
@@ -265,6 +270,7 @@ footer{margin-top:35px;color:var(--muted);font-size:.85rem;border-top:1px solid 
       <button class="mark-btn" id="markBtn" type="button" title="Flag this question to come back to before you submit">🚩 Mark for review</button>
     </div>
     <p class="qtext" id="qText">Loading…</p>
+    <div class="qmedia" id="qMedia"></div>
     <div id="optsWrap"></div>
     <div class="confidence-row" id="confidenceRow">
       <span class="clabel">How sure are you? <span class="req" id="confReqMark" hidden>*</span></span>
@@ -690,12 +696,34 @@ function recordTimeOnCurrent(){
   const ms = Date.now() - STATE.questionEnterMs;
   STATE.questionTimes[q.id] = (STATE.questionTimes[q.id] || 0) + ms;
 }
+function renderQuestionMedia(q){
+  // Optional per-question diagram (v3.4 backend) — inline SVG (theme-aware,
+  // adapts to light/dark via the same CSS vars as the rest of the page) or
+  // a base64 image data URI. Absent on the vast majority of questions;
+  // only shown when the server actually sent something for this one.
+  const box = document.getElementById('qMedia');
+  if (q.mediaType === 'svg' && q.mediaData){
+    box.innerHTML = q.mediaData;
+    box.classList.add('show');
+  } else if (q.mediaType === 'img' && q.mediaData){
+    box.innerHTML = '';
+    const img = document.createElement('img');
+    img.src = q.mediaData;
+    img.alt = `Diagram for question ${STATE.currentIndex+1}`;
+    box.appendChild(img);
+    box.classList.add('show');
+  } else {
+    box.innerHTML = '';
+    box.classList.remove('show');
+  }
+}
 function renderQuestion(){
   recordTimeOnCurrent();
   const q = STATE.questions[STATE.currentIndex];
   STATE.questionEnterMs = Date.now();
   document.getElementById('qTag').textContent = `Question ${STATE.currentIndex+1} of ${STATE.questions.length} · ${q.tag}`;
   document.getElementById('qText').textContent = q.q;
+  renderQuestionMedia(q);
   const optsWrap = document.getElementById('optsWrap');
   optsWrap.innerHTML = '';
   const displayOrder = q._displayOrder || q.opts.map((_,i)=>i);
@@ -964,7 +992,13 @@ document.getElementById('btnShowAnswers').addEventListener('click', async ()=>{
         else if (idx === q.selectedIndex) cls = 'wrong';
         optsHtml += `<div class="ropt ${cls}">${o}</div>`;
       });
-      div.innerHTML = `<p class="qtext">Q${i+1}. ${q.q}</p>${optsHtml}`;
+      let mediaHtml = '';
+      if (q.mediaType === 'svg' && q.mediaData){
+        mediaHtml = `<div class="qmedia show">${q.mediaData}</div>`;
+      } else if (q.mediaType === 'img' && q.mediaData){
+        mediaHtml = `<div class="qmedia show"><img src="${q.mediaData}" alt="Diagram for question ${i+1}"></div>`;
+      }
+      div.innerHTML = `<p class="qtext">Q${i+1}. ${q.q}</p>${mediaHtml}${optsHtml}`;
       wrap.appendChild(div);
     });
   } catch(e){
